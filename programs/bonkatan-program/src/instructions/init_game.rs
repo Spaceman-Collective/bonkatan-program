@@ -2,9 +2,10 @@ use crate::{
     constant::{ADMIN_ADDRESS, BONK_MINT, TOTAL_TILES}, state::{Config, GamePDA::GamePDA, Tile}, PlayerPDA::{PlayerPDA, Resources}, RollPDA::RollPDA, Settlement
 };
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::{create, AssociatedToken, Create}, token::{Mint, Token, TokenAccount}};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 pub fn create_lobby(ctx: Context<CreateLobby>, game_id:u64, config: Config, tiles: [Tile; TOTAL_TILES]) -> Result<()> {
+    // set initial game account state
     let game = &mut ctx.accounts.game;
     game.game_id = game_id;
     game.winning_player = None;
@@ -12,22 +13,9 @@ pub fn create_lobby(ctx: Context<CreateLobby>, game_id:u64, config: Config, tile
     game.tiles = tiles; //since this is the admin, tile distribution can be done client side and uploaded
     game.slot_last_turn_taken = game.config.game_start_slot;
 
-    let id_bytes = game_id.to_be_bytes();
-    let signer_seeds = &[
-        id_bytes.as_slice(),
-        &[ctx.bumps.game]
-    ];
-    create(CpiContext::new_with_signer(
-        ctx.accounts.ata_program.to_account_info(),
-        Create {
-            payer: ctx.accounts.admin.to_account_info(),
-            associated_token: ctx.accounts.game_ata.to_account_info(),
-            authority: ctx.accounts.game.to_account_info(),
-            mint: ctx.accounts.bonk_mint.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-            token_program: ctx.accounts.token_program.to_account_info()
-        }, 
-        &[signer_seeds]))?;
+    let rolls = &mut ctx.accounts.rolls;
+    rolls.rolls = Vec::new();
+
     Ok(())
 }
 
@@ -56,42 +44,48 @@ pub fn join_lobby(ctx: Context<JoinLobby>) -> Result<()> {
     Ok(())
 }
 
+// TODO: Uncomment address admin and bonk_mint checks
+
 #[derive(Accounts)]
 #[instruction(game_id:u64, config: Config, tiles: [Tile; TOTAL_TILES])]
 pub struct CreateLobby<'info> {
     #[account(
         mut,
-        address=ADMIN_ADDRESS
+        // address=ADMIN_ADDRESS
     )]
     pub admin: Signer<'info>,
     #[account(
         init,
         space = 8 + GamePDA::INIT_SPACE,
-        seeds=[game_id.to_be_bytes().as_slice()],
-        bump,
         payer = admin,
     )]
     // not actually a PDA, can be a wallet account cause no seeds needed, just gen a random keypair
-    pub game: Account<'info, GamePDA>,
+    pub game: Box<Account<'info, GamePDA>>,
 
     #[account(
         init,
-        space = 8 + 32 + 5,
         payer=admin,
+        space = 8 + 32 + 8,
+        seeds=[b"rolls", game_id.to_be_bytes().as_slice()],
+        bump,
     )]
-    pub roll: Account<'info, RollPDA>,
-    #[account()]
-    pub system_program: Program<'info, System>,
+    pub rolls: Account<'info, RollPDA>,
 
-    // ATA
-    pub token_program: Program<'info, Token>,
-    pub ata_program: Program<'info, AssociatedToken>,
-    #[account(mut)]
-    pub game_ata: Account<'info, TokenAccount>,
     #[account(
-        address = BONK_MINT
+        // address = BONK_MINT
     )]
     pub bonk_mint: Account<'info, Mint>,
+    #[account(
+      init,
+      seeds = [b"game-vault", game.key().as_ref()],
+      bump,
+      payer = admin,
+      token::mint = bonk_mint,
+      token::authority = game_vault
+    )]
+    pub game_vault: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
