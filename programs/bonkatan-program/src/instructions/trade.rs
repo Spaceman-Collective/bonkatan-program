@@ -306,7 +306,11 @@ pub struct CreateOffer<'info> {
     pub offer: Account<'info, Offer>,
     #[account(
       mut,
-      constraint = *owner.key == player.owner,
+        seeds=[
+            game.key().to_bytes().as_slice(),
+            owner.key().to_bytes().as_slice(),
+        ],
+        bump,
     )]
     pub player: Account<'info, PlayerPDA>,
     pub game: Account<'info, GamePDA>,

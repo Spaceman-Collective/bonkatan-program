@@ -92,12 +92,16 @@ pub struct ClaimResources<'info> {
     pub owner: Signer<'info>,
     #[account(
         mut,
-        constraint = *owner.key == player.key(),
-        constraint = *owner.key == player.key()
+        seeds=[
+            game.key().to_bytes().as_slice(),
+            owner.key().to_bytes().as_slice(),
+        ],
+        bump,
     )]
     pub player: Account<'info, PlayerPDA>,
     #[account(
-        constraint = rolls.game == game.key()
+        seeds=[b"rolls", game.game_id.to_be_bytes().as_slice()],
+        bump,
     )]
     pub rolls: Account<'info, RollPDA>,
     pub game: Account<'info, GamePDA>,
