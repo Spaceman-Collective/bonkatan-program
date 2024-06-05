@@ -264,7 +264,11 @@ pub struct TakeTurn<'info> {
     pub owner: Signer<'info>,
     #[account(
         mut,
-        constraint = player.owner.key() == owner.key()
+        seeds=[
+            game.key().to_bytes().as_slice(),
+            owner.key().to_bytes().as_slice(),
+        ],
+        bump,
     )]
     pub player: Account<'info, PlayerPDA>,
     #[account(mut)]
@@ -274,6 +278,8 @@ pub struct TakeTurn<'info> {
         realloc = rolls.to_account_info().data_len() + 1, //adding a u8 at the end of rolls
         realloc::payer = owner,
         realloc::zero = false,
+        seeds=[b"rolls", game.key().as_ref()],
+        bump,
     )]
     pub rolls: Account<'info, RollPDA>,
     pub system_program: Program<'info, System>,
@@ -290,6 +296,7 @@ pub struct TakeTurn<'info> {
     )]
     pub bonk_mint: Account<'info, Mint>,
     #[account(
+      mut,
       seeds = [b"game-vault", game.key().as_ref()],
       bump,
       token::mint = bonk_mint,
