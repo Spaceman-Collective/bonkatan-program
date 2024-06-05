@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::*;
-use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer_checked, Mint, Token, TokenAccount, TransferChecked};
 
 use crate::constant::BONK_MINT;
@@ -36,13 +35,14 @@ pub fn take_turn(ctx: Context<TakeTurn>, turn: Turn) -> Result<()> {
             TransferChecked {
                 from: ctx.accounts.owner_ata.to_account_info(),
                 mint: ctx.accounts.bonk_mint.to_account_info(),
-                to: ctx.accounts.game_ata.to_account_info(),
+                to: ctx.accounts.game_vault.to_account_info(),
                 authority: ctx.accounts.owner.to_account_info(),
             },
         ),
         amount,
         5, // BONK is 5 decimals
     )?;
+
     // Add the roll to ROLL pda
     let roll = get_random_u64(TOTAL_TILES as u64);
     rolls.rolls.push(roll as u8);
@@ -286,17 +286,17 @@ pub struct TakeTurn<'info> {
     )]
     pub owner_ata: Account<'info, TokenAccount>,
     #[account(
-        mut,
-        associated_token::mint = bonk_mint,
-        associated_token::authority = game,
-    )]
-    pub game_ata: Account<'info, TokenAccount>,
-    #[account(
         address = BONK_MINT
     )]
     pub bonk_mint: Account<'info, Mint>,
+    #[account(
+      seeds = [b"game-vault", game.key().as_ref()],
+      bump,
+      token::mint = bonk_mint,
+      token::authority = game_vault
+    )]
+    pub game_vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

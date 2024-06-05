@@ -65,5 +65,7 @@ pub mod bonkatan_program {
     }
 
     // Confirm Victory
-    // Destroy Lobby & Withdraw Pot
+    pub fn claim_victory(ctx: Context<ClaimVictory>) -> Result<()> {
+        instructions::victory::claim_victory(ctx)
+    }
 }

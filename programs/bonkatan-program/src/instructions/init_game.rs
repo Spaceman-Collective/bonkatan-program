@@ -74,7 +74,7 @@ pub struct CreateLobby<'info> {
     pub rolls: Account<'info, RollPDA>,
 
     #[account(
-        // address = BONK_MINT
+        address = BONK_MINT
     )]
     pub bonk_mint: Account<'info, Mint>,
     #[account(
