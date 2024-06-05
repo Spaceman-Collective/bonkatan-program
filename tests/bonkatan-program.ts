@@ -62,7 +62,7 @@ describe("bonkatan-program", () => {
       adminKey,
       adminKey.publicKey,
       null,
-      9,
+      5,
       bonkMintKey,
     );
 
@@ -79,7 +79,7 @@ describe("bonkatan-program", () => {
       bonkMint,
       player1Ata,
       adminKey,
-      10000,
+      1_000_000,
     );
 
     let player2Ata = await createAssociatedTokenAccount(
@@ -95,14 +95,14 @@ describe("bonkatan-program", () => {
       bonkMint,
       player2Ata,
       adminKey,
-      10000,
+      1_000_000,
     );
   });
 
   it("Create a lobby", async () => {
     let config  = {
       gameStartSlot: new anchor.BN(0),
-      auctionTokensStart: new anchor.BN(10000),
+      auctionTokensStart: new anchor.BN(1000),
       stepTokens: new anchor.BN(10),
       stepSlots: new anchor.BN(120),
       victoryMax: new anchor.BN(12),
@@ -157,14 +157,73 @@ describe("bonkatan-program", () => {
     // TODO: verify rolls account is closed.
   });
 
-  it("Join a lobby", async () => {
+  it("Player1 joins the lobby", async () => {
     const tx = await program.methods.joinLobby().accounts({
       owner: player1.publicKey,
       game: gameKey.publicKey,
     }).signers([player1]).rpc();
     console.log("Your transaction signature", tx);
-
     // Verify Player1's account is created
+  });
+
+  it("Player2 joins the lobby", async () => {
+    const tx = await program.methods.joinLobby().accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player2]).rpc();
+    console.log("Your transaction signature", tx);
+    // Verify Player2's account is created
+  });
+
+  it("Player1 takes first turn and settles", async () => {
+    let player1Ata = getAssociatedTokenAddressSync(bonkMint, player1.publicKey);
+    const tx = await program.methods.takeTurn({ settle: {}}).accounts({
+      owner: player1.publicKey,
+      game: gameKey.publicKey,
+      ownerAta: player1Ata,
+    }).signers([player1]).rpc();
+    console.log("Your transaction signature", tx);
+    // Verify settlement added
+  });
+
+  it("Player2 must claim before taking first turn", async () => {
+    const tx = await program.methods.claimResources().accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player2]).rpc();
+    console.log("Your transaction signature", tx);
+    // Verify resources are still 0
+  });
+
+  it("Player2 takes first turn and settles", async () => {
+    let player2Ata = getAssociatedTokenAddressSync(bonkMint, player2.publicKey);
+    const tx = await program.methods.takeTurn({ settle: {}}).accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+      ownerAta: player2Ata,
+    }).signers([player2]).rpc();
+    console.log("Your transaction signature", tx);
+    // Verify settlement added
+  });
+
+  it("Player2 must claim before taking next turn", async () => {
+    const tx = await program.methods.claimResources().accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player2]).rpc();
+    console.log("Your transaction signature", tx);
+    // Verify resources have increased
+  });
+
+  it("Player2 takes another turn and settles", async () => {
+    let player2Ata = getAssociatedTokenAddressSync(bonkMint, player2.publicKey);
+    const tx = await program.methods.takeTurn({ settle: {}}).accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+      ownerAta: player2Ata,
+    }).signers([player2]).rpc({skipPreflight: true});
+    console.log("Your transaction signature", tx);
+    // Verify second settlement added
   });
 
 });
