@@ -46,14 +46,12 @@ pub fn join_lobby(ctx: Context<JoinLobby>) -> Result<()> {
     Ok(())
 }
 
-// TODO: Uncomment address admin and bonk_mint checks
-
 #[derive(Accounts)]
 #[instruction(game_id:u64, config: Config, tiles: [Tile; TOTAL_TILES])]
 pub struct CreateLobby<'info> {
     #[account(
         mut,
-        // address=ADMIN_ADDRESS
+        address=ADMIN_ADDRESS
     )]
     pub admin: Signer<'info>,
     #[account(
@@ -71,7 +69,7 @@ pub struct CreateLobby<'info> {
         seeds=[b"rolls", game.key().as_ref()],
         bump,
     )]
-    pub rolls: Account<'info, RollPDA>,
+    pub rolls: Box<Account<'info, RollPDA>>,
 
     #[account(
         address = BONK_MINT
@@ -94,14 +92,27 @@ pub struct CreateLobby<'info> {
 pub struct DestroyLobby<'info> {
     #[account(
         mut,
-        // address=ADMIN_ADDRESS
+        address=ADMIN_ADDRESS
     )]
     pub admin: Signer<'info>,
     #[account(
         mut,
         close = admin
     )]
-    pub game: Account<'info, GamePDA>,
+    pub game: Box<Account<'info, GamePDA>>,
+    #[account(
+        mut,
+        close = admin,
+        seeds=[b"rolls", game.key().as_ref()],
+        bump,
+    )]
+    pub rolls: Box<Account<'info, RollPDA>>,
+    #[account(
+      seeds = [b"game-vault", game.key().as_ref()],
+      bump,
+      constraint = game_vault.amount == 0,
+    )]
+    pub game_vault: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -114,8 +125,8 @@ pub struct JoinLobby<'info> {
         space = 8 + PlayerPDA::INIT_SPACE,
         payer=owner,
         seeds=[
-            game.key().to_bytes().as_slice(),
-            owner.key().to_bytes().as_slice(),
+            game.key().as_ref(),
+            owner.key().as_ref()
         ],
         bump,
     )]

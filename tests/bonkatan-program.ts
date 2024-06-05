@@ -11,9 +11,14 @@ describe("bonkatan-program", () => {
 
   const program = anchor.workspace.BonkatanProgram as Program<BonkatanProgram>;
 
-  let bonkMintKey = anchor.web3.Keypair.generate();
+  let adminKey = anchor.web3.Keypair.fromSecretKey(
+    Uint8Array.from([39,223,117,182,66,161,252,179,104,68,74,62,174,136,163,222,29,159,17,109,248,178,87,96,10,20,42,38,54,112,99,6,127,141,58,215,203,132,231,220,88,89,44,138,119,12,190,13,66,245,251,203,67,80,143,165,2,17,31,165,249,187,254,191])
+  );
+
+  let bonkMintKey = anchor.web3.Keypair.fromSecretKey(
+    Uint8Array.from([103,168,102,204,19,115,99,145,26,4,15,61,240,221,170,235,92,216,215,234,181,101,86,253,169,102,187,118,108,16,79,228,19,125,39,218,162,209,85,16,248,34,17,124,191,1,74,130,94,173,236,130,219,125,85,76,80,131,165,197,205,93,156,202])
+  );
   let bonkMint = bonkMintKey.publicKey;
-  let bonkMintAuth = anchor.web3.Keypair.generate();
 
   let gameKey = anchor.web3.Keypair.generate();
 
@@ -23,10 +28,9 @@ describe("bonkatan-program", () => {
   let player2 = anchor.web3.Keypair.generate();
 
   before(async () => {
-    let payer = anchor.web3.Keypair.generate();
     let ix1 = anchor.web3.SystemProgram.transfer({
       fromPubkey: program.provider.publicKey,
-      toPubkey: payer.publicKey,
+      toPubkey: adminKey.publicKey,
       lamports: 10000000000,
     })
     let ix2 = anchor.web3.SystemProgram.transfer({
@@ -55,10 +59,10 @@ describe("bonkatan-program", () => {
 
     await createMint(
       program.provider.connection,
-      payer,
-      bonkMintAuth.publicKey,
+      adminKey,
+      adminKey.publicKey,
       null,
-      9,
+      5,
       bonkMintKey,
     );
 
@@ -74,8 +78,8 @@ describe("bonkatan-program", () => {
       player1,
       bonkMint,
       player1Ata,
-      bonkMintAuth,
-      10000,
+      adminKey,
+      1_000_000,
     );
 
     let player2Ata = await createAssociatedTokenAccount(
@@ -90,15 +94,15 @@ describe("bonkatan-program", () => {
       player2,
       bonkMint,
       player2Ata,
-      bonkMintAuth,
-      10000,
+      adminKey,
+      1_000_000,
     );
   });
 
   it("Create a lobby", async () => {
     let config  = {
       gameStartSlot: new anchor.BN(0),
-      auctionTokensStart: new anchor.BN(10000),
+      auctionTokensStart: new anchor.BN(1000),
       stepTokens: new anchor.BN(10),
       stepSlots: new anchor.BN(120),
       victoryMax: new anchor.BN(12),
@@ -109,10 +113,8 @@ describe("bonkatan-program", () => {
       config,
       gameTiles,
     ).accounts({
-      admin: program.provider.publicKey,
       game: gameKey.publicKey,
-      bonkMint,
-    }).signers([gameKey]).rpc();
+    }).signers([adminKey, gameKey]).rpc();
 
     console.log("Your transaction signature", tx);
 
@@ -142,25 +144,95 @@ describe("bonkatan-program", () => {
       config,
       gameTiles,
     ).accounts({
-      admin: program.provider.publicKey,
       game: tempGame.publicKey,
-      bonkMint,
-    }).signers([tempGame]).rpc();
+    }).signers([adminKey, tempGame]).rpc();
 
     const destroyLobbySig = await program.methods.destroyLobby().accounts({
       game: tempGame.publicKey,
-    }).rpc();
+    }).signers([adminKey]).rpc();
 
     let game = await program.account.gamePda.fetchNullable(tempGame.publicKey);
-    console.log("GAME : ", game);
 
     expect(game).to.be.null;
+
+    let rollPda = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("rolls"), tempGame.publicKey.toBuffer()],
+      program.programId
+    );
+    let rolls = await program.account.gamePda.fetchNullable(rollPda[0]);
+
+    expect(rolls).to.be.null;
   });
 
-  // it("Join a lobby", async () => {
-  //   const tx = await program.methods.joinLobby().rpc();
-  //   console.log("Your transaction signature", tx);
-  // });
+  it("Player1 joins the lobby", async () => {
+    const tx = await program.methods.joinLobby().accounts({
+      owner: player1.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player1]).rpc();
+    // Verify Player1's account is created
+  });
+
+  it("Player2 joins the lobby", async () => {
+    const tx = await program.methods.joinLobby().accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player2]).rpc();
+    // Verify Player2's account is created
+  });
+
+  it("Player1 takes first turn and settles", async () => {
+    let player1Ata = getAssociatedTokenAddressSync(bonkMint, player1.publicKey);
+    const tx = await program.methods.takeTurn({ settle: {}}).accounts({
+      owner: player1.publicKey,
+      game: gameKey.publicKey,
+      ownerAta: player1Ata,
+    }).signers([player1]).rpc();
+    // Verify settlement added
+  });
+
+  it("Player2 must claim before taking first turn", async () => {
+    const tx = await program.methods.claimResources().accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player2]).rpc();
+    // Verify resources are still 0
+  });
+
+  it("Player2 takes first turn and settles", async () => {
+    let player2Ata = getAssociatedTokenAddressSync(bonkMint, player2.publicKey);
+    const tx = await program.methods.takeTurn({ settle: {}}).accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+      ownerAta: player2Ata,
+    }).signers([player2]).rpc();
+    // Verify settlement added
+  });
+
+  it("Player2 must claim before taking next turn", async () => {
+    const tx = await program.methods.claimResources().accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player2]).rpc();
+    // Verify resources have increased
+  });
+
+  it("Player2 takes another turn and settles", async () => {
+    let player2Ata = getAssociatedTokenAddressSync(bonkMint, player2.publicKey);
+    const tx = await program.methods.takeTurn({ settle: {}}).accounts({
+      owner: player2.publicKey,
+      game: gameKey.publicKey,
+      ownerAta: player2Ata,
+    }).signers([player2]).rpc({skipPreflight: true});
+    // Verify second settlement added
+  });
+
+  it("Player1 must claim before taking next turn", async () => {
+    const tx = await program.methods.claimResources().accounts({
+      owner: player1.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player1]).rpc();
+    // Verify resources have increased
+  });
 
 });
 

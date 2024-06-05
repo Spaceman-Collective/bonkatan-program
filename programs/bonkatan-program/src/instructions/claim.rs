@@ -83,7 +83,7 @@ pub fn claim_resources(ctx: Context<ClaimResources>) -> Result<()> {
     }
 
     // update players last_roll_claimed
-    player.last_roll_claimed = Some(rolls.len() as u64 - 1);
+    player.last_roll_claimed = Some(rolls.len() as u64);
     Ok(())
 }
 

@@ -1,8 +1,8 @@
-use crate::state::{
+use crate::{state::{
     GamePDA::GamePDA,
     PlayerPDA::{PlayerPDA, Resources},
     TradePDA::Offer,
-};
+}, Resource, BANK_TRADE_AMOUNT};
 use anchor_lang::prelude::*;
 
 pub fn create_offer(
@@ -292,6 +292,104 @@ pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
     Ok(())
 }
 
+// A batch is 1 set of (6 - Based on Const) offering resources goes for any 1 recieving resource.
+pub fn trade_bank(ctx: Context<TradeBank>, offering: Resource, receiving: Resource, batches: u64) -> Result<()> {
+  if batches % BANK_TRADE_AMOUNT != 0 {
+    return err!(TradeErrors::InvalidBankTradeAmount);
+  }
+
+  let total_offering_amount = if let Some(total_offering_amount) = batches.checked_mul(6) {
+    total_offering_amount
+  } else {
+    return err!(TradeErrors::InvalidBankTradeOfferAmountMultipleOverflow);
+  };
+
+  let player = &mut ctx.accounts.player;
+  // Withdraw offering resources
+  match offering {
+    Resource::Wheat => {
+      if let Some(new_value) = player.resources.wheat.checked_sub(total_offering_amount) {
+        player.resources.wheat = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradeNotEnoughResources);
+      }
+    }
+    Resource::Brick => {
+      if let Some(new_value) = player.resources.brick.checked_sub(total_offering_amount) {
+        player.resources.brick = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradeNotEnoughResources);
+      }
+    },
+    Resource::Wood => {
+      if let Some(new_value) = player.resources.wood.checked_sub(total_offering_amount) {
+        player.resources.wood = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradeNotEnoughResources);
+      }
+    },
+    Resource::Sheep => {
+      if let Some(new_value) = player.resources.sheep.checked_sub(total_offering_amount) {
+        player.resources.sheep = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradeNotEnoughResources);
+      }
+
+    },
+    Resource::Ore => {
+      if let Some(new_value) = player.resources.ore.checked_sub(total_offering_amount) {
+        player.resources.ore = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradeNotEnoughResources);
+      }
+    },
+  }
+
+  // Deposit recieving resources
+  let total_recieving_amount = batches;
+  match receiving {
+    Resource::Wheat => {
+      if let Some(new_value) = player.resources.wheat.checked_add(total_recieving_amount) {
+        player.resources.wheat = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradePlayerResourcesOverflow);
+      }
+    }
+    Resource::Brick => {
+      if let Some(new_value) = player.resources.brick.checked_add(total_recieving_amount) {
+        player.resources.brick = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradePlayerResourcesOverflow);
+      }
+    },
+    Resource::Wood => {
+      if let Some(new_value) = player.resources.wood.checked_add(total_recieving_amount) {
+        player.resources.wood = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradePlayerResourcesOverflow);
+      }
+    },
+    Resource::Sheep => {
+      if let Some(new_value) = player.resources.sheep.checked_add(total_recieving_amount) {
+        player.resources.sheep = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradePlayerResourcesOverflow);
+      }
+
+    },
+    Resource::Ore => {
+      if let Some(new_value) = player.resources.ore.checked_add(total_recieving_amount) {
+        player.resources.ore = new_value;
+      } else {
+        return err!(TradeErrors::InvalidBankTradePlayerResourcesOverflow);
+      }
+    },
+  }
+
+
+  Ok(())
+}
+
 #[derive(Accounts)]
 pub struct CreateOffer<'info> {
     #[account(mut)]
@@ -307,8 +405,8 @@ pub struct CreateOffer<'info> {
     #[account(
       mut,
         seeds=[
-            game.key().to_bytes().as_slice(),
-            owner.key().to_bytes().as_slice(),
+            game.key().as_ref(),
+            owner.key().as_ref()
         ],
         bump,
     )]
@@ -358,6 +456,23 @@ pub struct CloseOffer<'info> {
     pub game: Account<'info, GamePDA>,
 }
 
+#[derive(Accounts)]
+pub struct TradeBank<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(
+      mut,
+        seeds=[
+            game.key().as_ref(),
+            owner.key().as_ref()
+        ],
+        bump,
+    )]
+    pub player: Account<'info, PlayerPDA>,
+    pub game: Account<'info, GamePDA>,
+    pub system_program: Program<'info, System>,
+}
+
 #[error_code]
 pub enum TradeErrors {
     #[msg("Invalid offer, not enough resources.")]
@@ -370,4 +485,12 @@ pub enum TradeErrors {
     AcceptOfferFailedNotEnoughResources,
     #[msg("Failed to close offer, player resources overflow.")]
     CloseOfferFailedResourcesOverflow,
+    #[msg("Invalid bank trade, trade amount must be a multiple of 6.")]
+    InvalidBankTradeAmount,
+    #[msg("Invalid bank trade, player does not have enough resources")]
+    InvalidBankTradeNotEnoughResources,
+    #[msg("Invalid bank trade, amount multiplier overflowed")]
+    InvalidBankTradeOfferAmountMultipleOverflow,
+    #[msg("Invalid bank trade, player resources overflowed")]
+    InvalidBankTradePlayerResourcesOverflow
 }

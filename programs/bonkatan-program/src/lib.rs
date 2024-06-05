@@ -52,6 +52,9 @@ pub mod bonkatan_program {
     pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
         instructions::trade::close_offer(ctx)
     }
+    pub fn trade_bank(ctx: Context<TradeBank>, offering: Resource, recieving: Resource, batches: u64) -> Result<()> {
+        instructions::trade::trade_bank(ctx, offering, recieving, batches)
+    }
 
     // Take a Turn
     // TakeTurn
