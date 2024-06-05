@@ -100,7 +100,7 @@ pub struct ClaimResources<'info> {
     )]
     pub player: Account<'info, PlayerPDA>,
     #[account(
-        seeds=[b"rolls", game.game_id.to_be_bytes().as_slice()],
+        seeds=[b"rolls", game.key().as_ref()],
         bump,
     )]
     pub rolls: Account<'info, RollPDA>,

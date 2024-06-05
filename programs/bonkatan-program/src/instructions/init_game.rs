@@ -68,7 +68,7 @@ pub struct CreateLobby<'info> {
         init,
         payer=admin,
         space = 8 + 32 + 8,
-        seeds=[b"rolls", game_id.to_be_bytes().as_slice()],
+        seeds=[b"rolls", game.key().as_ref()],
         bump,
     )]
     pub rolls: Account<'info, RollPDA>,
@@ -94,7 +94,7 @@ pub struct CreateLobby<'info> {
 pub struct DestroyLobby<'info> {
     #[account(
         mut,
-        address=ADMIN_ADDRESS
+        // address=ADMIN_ADDRESS
     )]
     pub admin: Signer<'info>,
     #[account(
