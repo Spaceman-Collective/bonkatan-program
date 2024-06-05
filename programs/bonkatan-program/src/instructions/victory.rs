@@ -39,6 +39,7 @@ pub struct ClaimVictory<'info> {
     #[account(mut, close = admin_account)]
     pub rolls: Account<'info, GamePDA>,
     #[account(mut, address = ADMIN_ADDRESS)]
+    /// CHECK: just the admin account getting rent back
     pub admin_account: AccountInfo<'info>,
     // SPL
     #[account(
