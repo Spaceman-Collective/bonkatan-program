@@ -64,3 +64,5 @@ pub const FACTORY_COST: Resources = Resources {
     brick: 1,
 };
 pub const FACTORY_VP: u64 = 1;
+
+pub const BANK_TRADE_AMOUNT: u64 = 6;
