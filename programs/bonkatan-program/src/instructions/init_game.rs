@@ -125,8 +125,8 @@ pub struct JoinLobby<'info> {
         space = 8 + PlayerPDA::INIT_SPACE,
         payer=owner,
         seeds=[
-            game.key().to_bytes().as_slice(),
-            owner.key().to_bytes().as_slice(),
+            game.key().as_ref(),
+            owner.key().as_ref()
         ],
         bump,
     )]

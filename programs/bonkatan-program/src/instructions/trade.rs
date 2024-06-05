@@ -307,8 +307,8 @@ pub struct CreateOffer<'info> {
     #[account(
       mut,
         seeds=[
-            game.key().to_bytes().as_slice(),
-            owner.key().to_bytes().as_slice(),
+            game.key().as_ref(),
+            owner.key().as_ref()
         ],
         bump,
     )]
