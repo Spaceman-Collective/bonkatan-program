@@ -46,14 +46,12 @@ pub fn join_lobby(ctx: Context<JoinLobby>) -> Result<()> {
     Ok(())
 }
 
-// TODO: Uncomment address admin and bonk_mint checks
-
 #[derive(Accounts)]
 #[instruction(game_id:u64, config: Config, tiles: [Tile; TOTAL_TILES])]
 pub struct CreateLobby<'info> {
     #[account(
         mut,
-        // address=ADMIN_ADDRESS
+        address=ADMIN_ADDRESS
     )]
     pub admin: Signer<'info>,
     #[account(
@@ -71,7 +69,7 @@ pub struct CreateLobby<'info> {
         seeds=[b"rolls", game.key().as_ref()],
         bump,
     )]
-    pub rolls: Account<'info, RollPDA>,
+    pub rolls: Box<Account<'info, RollPDA>>,
 
     #[account(
         address = BONK_MINT
@@ -94,7 +92,7 @@ pub struct CreateLobby<'info> {
 pub struct DestroyLobby<'info> {
     #[account(
         mut,
-        // address=ADMIN_ADDRESS
+        address=ADMIN_ADDRESS
     )]
     pub admin: Signer<'info>,
     #[account(
