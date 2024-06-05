@@ -152,9 +152,16 @@ describe("bonkatan-program", () => {
     }).signers([adminKey]).rpc();
 
     let game = await program.account.gamePda.fetchNullable(tempGame.publicKey);
-    console.log("GAME : ", game);
+
     expect(game).to.be.null;
-    // TODO: verify rolls account is closed.
+
+    let rollPda = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("rolls"), tempGame.publicKey.toBuffer()],
+      program.programId
+    );
+    let rolls = await program.account.gamePda.fetchNullable(rollPda[0]);
+
+    expect(rolls).to.be.null;
   });
 
   it("Player1 joins the lobby", async () => {
@@ -162,7 +169,6 @@ describe("bonkatan-program", () => {
       owner: player1.publicKey,
       game: gameKey.publicKey,
     }).signers([player1]).rpc();
-    console.log("Your transaction signature", tx);
     // Verify Player1's account is created
   });
 
@@ -171,7 +177,6 @@ describe("bonkatan-program", () => {
       owner: player2.publicKey,
       game: gameKey.publicKey,
     }).signers([player2]).rpc();
-    console.log("Your transaction signature", tx);
     // Verify Player2's account is created
   });
 
@@ -182,7 +187,6 @@ describe("bonkatan-program", () => {
       game: gameKey.publicKey,
       ownerAta: player1Ata,
     }).signers([player1]).rpc();
-    console.log("Your transaction signature", tx);
     // Verify settlement added
   });
 
@@ -191,7 +195,6 @@ describe("bonkatan-program", () => {
       owner: player2.publicKey,
       game: gameKey.publicKey,
     }).signers([player2]).rpc();
-    console.log("Your transaction signature", tx);
     // Verify resources are still 0
   });
 
@@ -202,7 +205,6 @@ describe("bonkatan-program", () => {
       game: gameKey.publicKey,
       ownerAta: player2Ata,
     }).signers([player2]).rpc();
-    console.log("Your transaction signature", tx);
     // Verify settlement added
   });
 
@@ -211,7 +213,6 @@ describe("bonkatan-program", () => {
       owner: player2.publicKey,
       game: gameKey.publicKey,
     }).signers([player2]).rpc();
-    console.log("Your transaction signature", tx);
     // Verify resources have increased
   });
 
@@ -222,8 +223,15 @@ describe("bonkatan-program", () => {
       game: gameKey.publicKey,
       ownerAta: player2Ata,
     }).signers([player2]).rpc({skipPreflight: true});
-    console.log("Your transaction signature", tx);
     // Verify second settlement added
+  });
+
+  it("Player1 must claim before taking next turn", async () => {
+    const tx = await program.methods.claimResources().accounts({
+      owner: player1.publicKey,
+      game: gameKey.publicKey,
+    }).signers([player1]).rpc();
+    // Verify resources have increased
   });
 
 });

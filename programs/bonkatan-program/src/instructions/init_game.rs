@@ -99,7 +99,20 @@ pub struct DestroyLobby<'info> {
         mut,
         close = admin
     )]
-    pub game: Account<'info, GamePDA>,
+    pub game: Box<Account<'info, GamePDA>>,
+    #[account(
+        mut,
+        close = admin,
+        seeds=[b"rolls", game.key().as_ref()],
+        bump,
+    )]
+    pub rolls: Box<Account<'info, RollPDA>>,
+    #[account(
+      seeds = [b"game-vault", game.key().as_ref()],
+      bump,
+      constraint = game_vault.amount == 0,
+    )]
+    pub game_vault: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
