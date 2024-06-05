@@ -1,9 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 
-import {createMint} from "@solana/spl-token";
+import {createAssociatedTokenAccount, createMint, getAssociatedTokenAddressSync, mintTo} from "@solana/spl-token";
 import { BonkatanProgram } from "../target/types/bonkatan_program";
-import { assert } from "chai";
+import { assert, expect } from "chai";
 
 describe("bonkatan-program", () => {
   // Configure the client to use the local cluster.
@@ -11,13 +11,33 @@ describe("bonkatan-program", () => {
 
   const program = anchor.workspace.BonkatanProgram as Program<BonkatanProgram>;
 
-  it("Creat a lobby", async () => {
-    let payer = anchor.web3.Keypair.generate();
+  let bonkMintKey = anchor.web3.Keypair.generate();
+  let bonkMint = bonkMintKey.publicKey;
+  let bonkMintAuth = anchor.web3.Keypair.generate();
 
-    let ix = anchor.web3.SystemProgram.transfer({
+  let gameKey = anchor.web3.Keypair.generate();
+
+  let gameId = new anchor.BN(0);
+
+  let player1 = anchor.web3.Keypair.generate();
+  let player2 = anchor.web3.Keypair.generate();
+
+  before(async () => {
+    let payer = anchor.web3.Keypair.generate();
+    let ix1 = anchor.web3.SystemProgram.transfer({
       fromPubkey: program.provider.publicKey,
       toPubkey: payer.publicKey,
-      lamports: 100000000000,
+      lamports: 10000000000,
+    })
+    let ix2 = anchor.web3.SystemProgram.transfer({
+      fromPubkey: program.provider.publicKey,
+      toPubkey: player1.publicKey,
+      lamports: 1000000000,
+    })
+    let ix3 = anchor.web3.SystemProgram.transfer({
+      fromPubkey: program.provider.publicKey,
+      toPubkey: player2.publicKey,
+      lamports: 1000000000,
     })
 
     let recentBlockhash = await program.provider.connection.getLatestBlockhash();
@@ -25,7 +45,7 @@ describe("bonkatan-program", () => {
     let messageV0 = new anchor.web3.TransactionMessage({
       payerKey: program.provider.publicKey,
       recentBlockhash: recentBlockhash.blockhash,
-      instructions: [ix],
+      instructions: [ix1, ix2, ix3],
 
     }).compileToV0Message();
 
@@ -33,17 +53,49 @@ describe("bonkatan-program", () => {
 
     await program.provider.sendAndConfirm(transferTx);
 
-    let bonkMintAuth = anchor.web3.Keypair.generate();
-
-    let bonkMint = await createMint(
+    await createMint(
       program.provider.connection,
       payer,
       bonkMintAuth.publicKey,
       null,
       9,
+      bonkMintKey,
     );
 
+    let player1Ata = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player1,
+      bonkMint,
+      player1.publicKey,
+    );
 
+    await mintTo(
+      program.provider.connection,
+      player1,
+      bonkMint,
+      player1Ata,
+      bonkMintAuth,
+      10000,
+    );
+
+    let player2Ata = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player2,
+      bonkMint,
+      player2.publicKey,
+    );
+
+    await mintTo(
+      program.provider.connection,
+      player2,
+      bonkMint,
+      player2Ata,
+      bonkMintAuth,
+      10000,
+    );
+  });
+
+  it("Create a lobby", async () => {
     let config  = {
       gameStartSlot: new anchor.BN(0),
       auctionTokensStart: new anchor.BN(10000),
@@ -51,13 +103,7 @@ describe("bonkatan-program", () => {
       stepSlots: new anchor.BN(120),
       victoryMax: new anchor.BN(12),
     };
-
-
-    let gameKey = anchor.web3.Keypair.generate();
-
-    let gameId = new anchor.BN(0);
     let gameTiles = get_init_game_tiles();
-
     const tx = await program.methods.createLobby(
       gameId,
       config,
@@ -77,18 +123,45 @@ describe("bonkatan-program", () => {
 
     // Verify Game data
   });
-  // it("Destroy a lobby", async () => {
-  //   const tx = await program.methods.destroyLobby().rpc();
-  //   console.log("Your transaction signature", tx);
-  // });
+
+  it("Destroy a lobby", async () => {
+
+    let tempGame = anchor.web3.Keypair.generate();
+    let tempGameId = new anchor.BN(2);
+
+    let config  = {
+      gameStartSlot: new anchor.BN(0),
+      auctionTokensStart: new anchor.BN(10000),
+      stepTokens: new anchor.BN(10),
+      stepSlots: new anchor.BN(120),
+      victoryMax: new anchor.BN(12),
+    };
+    let gameTiles = get_init_game_tiles();
+    const createLobbySig = await program.methods.createLobby(
+      tempGameId,
+      config,
+      gameTiles,
+    ).accounts({
+      admin: program.provider.publicKey,
+      game: tempGame.publicKey,
+      bonkMint,
+    }).signers([tempGame]).rpc();
+
+    const destroyLobbySig = await program.methods.destroyLobby().accounts({
+      game: tempGame.publicKey,
+    }).rpc();
+
+    let game = await program.account.gamePda.fetchNullable(tempGame.publicKey);
+    console.log("GAME : ", game);
+
+    expect(game).to.be.null;
+  });
+
   // it("Join a lobby", async () => {
   //   const tx = await program.methods.joinLobby().rpc();
   //   console.log("Your transaction signature", tx);
   // });
-  // it("Start a lobby", async () => {
-  //   const tx = await program.methods.startLobby().rpc();
-  //   console.log("Your transaction signature", tx);
-  // });
+
 });
 
 function get_init_game_tiles(): any[] {
