@@ -14,6 +14,7 @@ pub fn create_lobby(ctx: Context<CreateLobby>, game_id:u64, config: Config, tile
     game.slot_last_turn_taken = game.config.game_start_slot;
 
     let rolls = &mut ctx.accounts.rolls;
+    rolls.game = game.key();
     rolls.rolls = Vec::new();
 
     Ok(())
@@ -25,6 +26,7 @@ pub fn destroy_lobby(_ctx: Context<DestroyLobby>) -> Result<()> {
 
 pub fn join_lobby(ctx: Context<JoinLobby>) -> Result<()> {
     let player = &mut ctx.accounts.player;
+    player.game = ctx.accounts.game.key();
     player.owner = ctx.accounts.owner.key();
     player.free_settlements = 3;
     for i in 0..TOTAL_TILES {

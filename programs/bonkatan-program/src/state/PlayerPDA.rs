@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 #[account]
 #[derive(InitSpace)]
 pub struct PlayerPDA {
+    pub game: Pubkey,
     pub owner: Pubkey,
     pub free_settlements: u8, //usually 3, set on init player
     pub settlements: [Settlement; TOTAL_TILES], //they can have max 1 settlement per tile
