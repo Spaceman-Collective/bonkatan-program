@@ -8,6 +8,7 @@
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "^1.92.2",
     "bs58": "^5.0.0",
+    "byteify": "^4.1.4",
     "commander": "^12.1.0"
   }
 }

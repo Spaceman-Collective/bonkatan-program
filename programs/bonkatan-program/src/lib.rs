@@ -46,13 +46,18 @@ pub mod bonkatan_program {
     ) -> Result<()> {
         instructions::trade::create_offer(ctx, offering_resources, accepting_resources, offer_id)
     }
-    pub fn accept_offer(ctx: Context<AcceptOffer>) -> Result<()> {
-        instructions::trade::accept_offer(ctx)
+    pub fn accept_offer(ctx: Context<AcceptOffer>, offer_id: u64) -> Result<()> {
+        instructions::trade::accept_offer(ctx, offer_id)
     }
-    pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
-        instructions::trade::close_offer(ctx)
+    pub fn close_offer(ctx: Context<CloseOffer>, offer_id: u64) -> Result<()> {
+        instructions::trade::close_offer(ctx, offer_id)
     }
-    pub fn trade_bank(ctx: Context<TradeBank>, offering: Resource, recieving: Resource, batches: u64) -> Result<()> {
+    pub fn trade_bank(
+        ctx: Context<TradeBank>,
+        offering: Resource,
+        recieving: Resource,
+        batches: u64,
+    ) -> Result<()> {
         instructions::trade::trade_bank(ctx, offering, recieving, batches)
     }
 

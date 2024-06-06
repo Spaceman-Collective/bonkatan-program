@@ -1,5 +1,5 @@
 use crate::{
-    constant::{ADMIN_ADDRESS, BONK_MINT, TOTAL_TILES}, state::{Config, GamePDA::GamePDA, Tile}, PlayerPDA::{PlayerPDA, Resources}, RollPDA::RollPDA, Settlement
+    constant::{ADMIN_ADDRESS, BONK_MINT, TOTAL_TILES}, state::{Config, GamePDA::GamePDA, Tile}, PlayerPDA::{PlayerPDA, Resources}, RollPDA::RollPDA, Settlement, WinningPlayer
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -8,7 +8,7 @@ pub fn create_lobby(ctx: Context<CreateLobby>, game_id:u64, config: Config, tile
     // set initial game account state
     let game = &mut ctx.accounts.game;
     game.game_id = game_id;
-    game.winning_player = None;
+    game.winning_player = WinningPlayer {player_pda: ADMIN_ADDRESS, points: 0};
     game.config = config;
     game.tiles = tiles; //since this is the admin, tile distribution can be done client side and uploaded
     game.slot_last_turn_taken = game.config.game_start_slot;
@@ -57,6 +57,8 @@ pub struct CreateLobby<'info> {
     #[account(
         init,
         space = 8 + GamePDA::INIT_SPACE,
+        seeds=[game_id.to_be_bytes().as_slice()],
+        bump,
         payer = admin,
     )]
     // not actually a PDA, can be a wallet account cause no seeds needed, just gen a random keypair

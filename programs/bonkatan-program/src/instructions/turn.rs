@@ -16,6 +16,13 @@ pub fn take_turn(ctx: Context<TakeTurn>, turn: Turn) -> Result<()> {
     let player = &mut ctx.accounts.player;
     let game = &mut ctx.accounts.game;
     let rolls = &mut ctx.accounts.rolls;
+    let clock = Clock::get().unwrap();
+
+    // Check if game has started yet
+    if game.config.game_start_slot > clock.slot {
+        return err!(TurnErrors::GameNotStarted);
+    }
+
     // Check if there's any rolls unclaimed, don't allow turns until all rolls have been claimed
     if rolls.rolls.len() > 0 && player.last_roll_claimed.is_none() {
         return err!(TurnErrors::UnclaimedRollsError);
@@ -24,7 +31,6 @@ pub fn take_turn(ctx: Context<TakeTurn>, turn: Turn) -> Result<()> {
         return err!(TurnErrors::UnclaimedRollsError);
     }
     // Take out BONK tokens for the turn
-    let clock = Clock::get().unwrap();
     let slots_elapsed = clock.slot - game.slot_last_turn_taken;
     let steps_elapsed = slots_elapsed / game.config.step_slots;
     let amount = game.config.auction_tokens_start - (steps_elapsed * game.config.step_tokens);
@@ -240,6 +246,14 @@ pub fn take_turn(ctx: Context<TakeTurn>, turn: Turn) -> Result<()> {
             }
 
             player.victory_points += vp_to_add;
+            if player.victory_points >= game.winning_player.points {
+                game.winning_player = WinningPlayer {
+                    player_pda: player.key(),
+                    points: player.victory_points,
+                }
+            }
+
+            /*
             if game.winning_player.is_none() {
                 game.winning_player = Some(WinningPlayer {
                     player_pda: player.key(),
@@ -253,6 +267,7 @@ pub fn take_turn(ctx: Context<TakeTurn>, turn: Turn) -> Result<()> {
                     })
                 }
             }
+             */
         }
     }
     Ok(())
@@ -281,7 +296,7 @@ pub struct TakeTurn<'info> {
         seeds=[b"rolls", game.key().as_ref()],
         bump,
     )]
-    pub rolls: Account<'info, RollPDA>,
+    pub rolls: Box<Account<'info, RollPDA>>,
     pub system_program: Program<'info, System>,
 
     // SPL
@@ -334,4 +349,7 @@ pub enum TurnErrors {
 
     #[msg("Upgrading requires atleast a town first!")]
     UnsettledTile,
+
+    #[msg("Game hasn't started yet")]
+    GameNotStarted,
 }

@@ -31,12 +31,23 @@ pub fn claim_victory(ctx: Context<ClaimVictory>) -> Result<()> {
 #[derive(Accounts)]
 pub struct ClaimVictory<'info> {
     pub owner: Signer<'info>,
-    #[account(constraint = player.owner.key() == owner.key())]
+    #[account(
+        seeds = [
+            game.key().as_ref(),
+            owner.key().as_ref()
+        ],
+        bump,
+        constraint = player.owner.key() == owner.key()
+    )]
     pub player: Account<'info, PlayerPDA>,
     pub system_program: Program<'info, System>,
     #[account(mut, close = admin_account)]
     pub game: Account<'info, GamePDA>,
-    #[account(mut, close = admin_account)]
+    #[account(
+        mut, 
+        seeds=[b"rolls", game.key().as_ref()],
+        bump,
+        close = admin_account)]
     pub rolls: Account<'info, GamePDA>,
     #[account(mut, address = ADMIN_ADDRESS)]
     /// CHECK: just the admin account getting rent back

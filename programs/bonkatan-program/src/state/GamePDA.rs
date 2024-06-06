@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 pub struct GamePDA {
     pub game_id: u64,
     // Current Highest VP
-    pub winning_player: Option<WinningPlayer>,
+    pub winning_player: WinningPlayer,
     pub config: Config,
     pub tiles: [Tile; TOTAL_TILES], //20 Tiles, 4 of each of the 5 resources
     pub slot_last_turn_taken: u64,
@@ -33,7 +33,6 @@ pub struct Config {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct Tile {
-    pub tile_id: u8, //just the index in tile
     pub tile_yield: Yield,
     pub tile_resource: Resource,
 }
