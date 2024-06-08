@@ -417,6 +417,11 @@ bufferutil@^4.0.1:
   dependencies:
     node-gyp-build "^4.3.0"
 
+byteify@^4.1.4:
+  version "4.1.4"
+  resolved "https://registry.yarnpkg.com/byteify/-/byteify-4.1.4.tgz#126cbfcf3a564237852e9c4393e9e129eb0cec55"
+  integrity sha512-txz7sDGm+pJAMMyum7P5lQscyn7GSkJJtHyoUkMkUj4mUwpDz9oARWy4QrKUXYvfx4jV0DUyIFXm/qINNWd/Qg==
+
 camelcase@^6.0.0, camelcase@^6.3.0:
   version "6.3.0"
   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-6.3.0.tgz#5685b95eb209ac9c0c177467778c9c84df58ba9a"

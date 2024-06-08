@@ -57,13 +57,10 @@ pub struct CreateLobby<'info> {
     #[account(
         init,
         space = 8 + GamePDA::INIT_SPACE,
-        seeds=[game_id.to_be_bytes().as_slice()],
-        bump,
         payer = admin,
     )]
     // not actually a PDA, can be a wallet account cause no seeds needed, just gen a random keypair
     pub game: Box<Account<'info, GamePDA>>,
-
     #[account(
         init,
         payer=admin,
