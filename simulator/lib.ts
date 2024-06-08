@@ -1,6 +1,6 @@
 import { Program, BN } from '@coral-xyz/anchor';
 import { BonkatanProgram } from '../target/types/bonkatan_program';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { randomBytes } from 'crypto';
 import { ByteifyEndianess, serializeUint64 } from 'byteify';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
@@ -23,12 +23,14 @@ const offerDescriminator = Uint8Array.from([
 ]);
 
 export async function initGame(args: {
+    gameKey?: Keypair,
     gameId?: BN,
     config?: Config,
     tiles?: Tile[]
 }) {
     const gameId: BN = args.gameId ? args.gameId : new BN(randomU64().toString());
     console.log("Creating game with ID: ", gameId.toString());
+    console.log("at PublicKey: ", args.gameKey.publicKey.toString());
     const currentSlot = await conn.getSlot();
     /**
      * Default
@@ -92,56 +94,47 @@ export async function destoryGame(gameId: BN) {
         .instruction()
 }
 
-export async function joinGame(gameId: BN, playerPubkey: PublicKey) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-
+export async function joinGame(gameKey: PublicKey, playerPubkey: PublicKey) {
     return bonkatan
         .methods
         .joinLobby()
         .accounts({
             owner: playerPubkey,
-            game
+            game: gameKey,
         })
         .instruction();
 }
 
-export async function createOffer(gameId: BN, playerPubkey: PublicKey, offer: Resources, want: Resources) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
+export async function createOffer(gameKey: PublicKey, playerPubkey: PublicKey, offer: Resources, want: Resources) {
     const offerId = new BN(randomU64().toString());
 
     return bonkatan
         .methods
         .createOffer(offer, want, offerId)
         .accounts({
-            game,
+            game: gameKey,
             owner: playerPubkey,
         })
         .instruction();
 }
 
-export async function acceptOffer(gameId: BN, playerPubkey: PublicKey, offerId: BN) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-
+export async function acceptOffer(gameKey: PublicKey, playerPubkey: PublicKey, offerId: BN) {
     return bonkatan
         .methods
         .acceptOffer(offerId)
-        .accounts({ game, owner: playerPubkey })
+        .accounts({ game: gameKey, owner: playerPubkey })
         .instruction()
 }
 
-export async function closeOffer(gameId: BN, playerPubkey: PublicKey, offerId: BN) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-
+export async function closeOffer(gameKey: PublicKey, playerPubkey: PublicKey, offerId: BN) {
     return bonkatan
         .methods
         .closeOffer(offerId)
-        .accounts({ game, owner: playerPubkey })
+        .accounts({ game: gameKey, owner: playerPubkey })
         .instruction();
 }
 
-export async function tradeBank(gameId: BN, playerPubkey: PublicKey, offeringResource: Resource, recevingResource: Resource, offeringAmt: BN) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-
+export async function tradeBank(gameKey: PublicKey, playerPubkey: PublicKey, offeringResource: Resource, recevingResource: Resource, offeringAmt: BN) {
     let offering: any = {};
     offering[offeringResource] = {}
     let receving: any = {};
@@ -150,12 +143,11 @@ export async function tradeBank(gameId: BN, playerPubkey: PublicKey, offeringRes
     return bonkatan
         .methods
         .tradeBank(offering, receving, offeringAmt)
-        .accounts({ game, owner: playerPubkey })
+        .accounts({ game: gameKey, owner: playerPubkey })
         .instruction()
 }
 
-export async function takeTurn(gameId: BN, playerPubkey: PublicKey, turnInfo: TurnInfo) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
+export async function takeTurn(gameKey: PublicKey, playerPubkey: PublicKey, turnInfo: TurnInfo) {
     let turn: any;
 
     if (turnInfo.type == "upgrade") {
@@ -174,53 +166,42 @@ export async function takeTurn(gameId: BN, playerPubkey: PublicKey, turnInfo: Tu
     return bonkatan
         .methods
         .takeTurn(turn)
-        .accounts({ game, owner: playerPubkey, ownerAta })
+        .accounts({ game: gameKey, owner: playerPubkey, ownerAta })
         .instruction()
 }
 
-export async function claimResources(gameId: BN, playerPubkey: PublicKey) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-
+export async function claimResources(gameKey: PublicKey, playerPubkey: PublicKey) {
     return bonkatan
         .methods
         .claimResources()
-        .accounts({ game, owner: playerPubkey })
+        .accounts({ game: gameKey, owner: playerPubkey })
         .instruction();
 }
 
-export async function claimVictory(gameId: BN, playerPubkey: PublicKey) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
+export async function claimVictory(gameKey: PublicKey, playerPubkey: PublicKey) {
     const ownerAta = await getAssociatedTokenAddress(bonkMint, playerPubkey);
 
     return bonkatan
         .methods
         .claimVictory()
-        .accounts({ game, owner: playerPubkey, ownerAta })
+        .accounts({ game: gameKey, owner: playerPubkey, ownerAta })
         .instruction()
 }
 
-export async function getPlayerAccount(gameId: BN, playerPubkey: PublicKey) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-    const playerPdaAddress = PublicKey.findProgramAddressSync([game.toBuffer(), playerPubkey.toBuffer()], bonkatan.programId)[0];
+export async function getPlayerAccount(gameKey: PublicKey, playerPubkey: PublicKey) {
+    const playerPdaAddress = PublicKey.findProgramAddressSync([gameKey.toBuffer(), playerPubkey.toBuffer()], bonkatan.programId)[0];
     return bonkatan.account.playerPda.fetch(playerPdaAddress)
 }
 
-export async function getGameAccount(gameId: BN) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
-    console.log("Fetching Game: ", game.toString());
-    return bonkatan.account.gamePda.fetch(game);
-}
-
-export async function getRollsAccount(gameId: BN) {
-    const game = PublicKey.findProgramAddressSync([Uint8Array.from(serializeUint64(BigInt(gameId.toString()), { endianess: ByteifyEndianess.BIG_ENDIAN }))], bonkatan.programId)[0];
+export async function getRollsAccount(gameKey: PublicKey) {
     const rollsPDA = PublicKey.findProgramAddressSync([
         Buffer.from("rolls"),
-        game.toBuffer()
+        gameKey.toBuffer()
     ], bonkatan.programId)[0];
     return bonkatan.account.rollPda.fetch(rollsPDA);
 }
 
-export async function getMarket(gameId: BN) {
+export async function getMarket(gameKey: PublicKey) {
     return conn.getParsedProgramAccounts(bonkatan.programId, {
         filters: [
             {
