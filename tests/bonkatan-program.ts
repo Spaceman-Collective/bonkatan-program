@@ -233,7 +233,17 @@ describe("bonkatan-program", () => {
             })
             .signers([player1])
             .rpc();
+
         // Verify settlement added
+        let player1AccountPda = anchor.web3.PublicKey.findProgramAddressSync([gameKey.publicKey.toBuffer(), player1.publicKey.toBuffer()], program.programId);
+        let playerAccount = await program.account.playerPda.fetch(player1AccountPda[0]);
+        console.log("PlayerAccount: ", playerAccount);
+
+        playerAccount.settlements.forEach((settlement) => {
+          if (settlement.structure != null) {
+            console.log("Settlement Structure: ", settlement.structure);
+          }
+        });
     });
 
     it("Player2 must claim before taking first turn", async () => {
@@ -304,6 +314,9 @@ describe("bonkatan-program", () => {
             .signers([player1])
             .rpc();
         // Verify resources have increased
+        let player1AccountPda = anchor.web3.PublicKey.findProgramAddressSync([gameKey.publicKey.toBuffer(), player1.publicKey.toBuffer()], program.programId);
+        let playerAccount = await program.account.playerPda.fetch(player1AccountPda[0]);
+        console.log("PlayerAccount With Resources: ", playerAccount);
     });
 });
 

@@ -21,64 +21,72 @@ pub fn claim_resources(ctx: Context<ClaimResources>) -> Result<()> {
         return err!(ClaimErrors::ClaimFailedAllResourcesClaimed);
     }
     for x in last_roll_claimed..rolls.len() {
-        let tile = ctx.accounts.game.tiles[x].clone();
-        if let Some(player_settlement) = player.settlements[x].structure.clone() {
-            let settlement_multiplier = match player_settlement {
-                Structure::Town => 1,
-                Structure::Cathedral => {
-                    continue;
-                }
-                Structure::City => 2,
-                Structure::Factory => 3,
-            };
+        let settlements = player.settlements.clone();
+        let rolled_tile_id = ctx.accounts.rolls.rolls.clone()[x];
 
-            let tile_yield: u64 = match tile.tile_yield {
-                Yield::Normal => 1,
-                Yield::Sparse => 2,
-                Yield::Rich => 3,
-            };
+        for (i, settlement) in settlements.iter().enumerate() {
+          if i as u8 == rolled_tile_id {
+            if let Some(player_settlement) = settlement.structure.clone() {
 
-            if let Some(player_yield) = tile_yield.checked_add(settlement_multiplier) {
-                match tile.tile_resource {
-                    Resource::Wheat => {
-                        if let Some(new_value) = player.resources.wheat.checked_add(player_yield) {
-                            player.resources.wheat = new_value;
-                        } else {
-                            return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
+              let tile = ctx.accounts.game.tiles[i].clone();
+                let settlement_multiplier = match player_settlement {
+                    Structure::Town => 1,
+                    Structure::Cathedral => {
+                        continue;
+                    }
+                    Structure::City => 2,
+                    Structure::Factory => 3,
+                };
+
+                let tile_yield: u64 = match tile.tile_yield {
+                    Yield::Normal => 1,
+                    Yield::Sparse => 2,
+                    Yield::Rich => 3,
+                };
+
+                if let Some(player_yield) = tile_yield.checked_add(settlement_multiplier) {
+                    match tile.tile_resource {
+                        Resource::Wheat => {
+                            if let Some(new_value) = player.resources.wheat.checked_add(player_yield) {
+                                player.resources.wheat = new_value;
+                            } else {
+                                return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
+                            }
+                        }
+                        Resource::Brick => {
+                            if let Some(new_value) = player.resources.brick.checked_add(player_yield) {
+                                player.resources.brick = new_value;
+                            } else {
+                                return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
+                            }
+                        }
+                        Resource::Wood => {
+                            if let Some(new_value) = player.resources.wood.checked_add(player_yield) {
+                                player.resources.wood = new_value;
+                            } else {
+                                return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
+                            }
+                        }
+                        Resource::Sheep => {
+                            if let Some(new_value) = player.resources.sheep.checked_add(player_yield) {
+                                player.resources.sheep = new_value;
+                            } else {
+                                return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
+                            }
+                        }
+                        Resource::Ore => {
+                            if let Some(new_value) = player.resources.ore.checked_add(player_yield) {
+                                player.resources.ore = new_value;
+                            } else {
+                                return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
+                            }
                         }
                     }
-                    Resource::Brick => {
-                        if let Some(new_value) = player.resources.brick.checked_add(player_yield) {
-                            player.resources.brick = new_value;
-                        } else {
-                            return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
-                        }
-                    }
-                    Resource::Wood => {
-                        if let Some(new_value) = player.resources.wood.checked_add(player_yield) {
-                            player.resources.wood = new_value;
-                        } else {
-                            return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
-                        }
-                    }
-                    Resource::Sheep => {
-                        if let Some(new_value) = player.resources.sheep.checked_add(player_yield) {
-                            player.resources.sheep = new_value;
-                        } else {
-                            return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
-                        }
-                    }
-                    Resource::Ore => {
-                        if let Some(new_value) = player.resources.ore.checked_add(player_yield) {
-                            player.resources.ore = new_value;
-                        } else {
-                            return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
-                        }
-                    }
+                } else {
+                    return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
                 }
-            } else {
-                return err!(ClaimErrors::ClaimFailedArithmaticOverflow);
             }
+          }
         }
     }
 
